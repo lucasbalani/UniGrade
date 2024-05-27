@@ -39,27 +39,15 @@ class StudentManagementApp:
         # Botão para o caso de uso "Registrar Nota"
         self.btnRegisterGrade = tk.Button(self.frame, text="Registrar Nota", command=self.studentGradeForm, width=widthScreen)
         self.btnRegisterGrade.pack()
+        
+        # Botão para o caso de uso "Consultar Nota"
+        self.btnViewGrade = tk.Button(self.frame, text="Visualizar Notas", command=self.viewGrades, width=widthScreen)
+        self.btnViewGrade.pack()
 
         # Botão para sair da aplicação
         self.btnQuit = tk.Button(self.frame, text="Sair", command=self.master.quit, width=widthScreen)
         self.btnQuit.pack()
-
-    def registerGrade(self):
-        screenRegisterGrade = tk.Toplevel(self.master)
-        screenRegisterGrade.title("UniGrade - Registrar Nota")
-
-        self.mainTitle = tk.Label(self.frame, text="Bem-vindo ao UniGrade! Selecione uma opção abaixo:")
-        
-        # Button Save
-        screenRegisterGrade.btnSave = tk.Button(screenRegisterGrade, text="Salvar", command=self.manageSubjects, width=50, height=2)
-        screenRegisterGrade.btnSave.pack()
-        
-        self.master.title("UniGrade - Cadastrar Nota")
-        
-    def viewGrades(self):
-        # Lógica para consultar notas
-        messagebox.showinfo("Consultar Notas", "Funcionalidade de Consultar Notas")
-
+   
     def manageStudents(self):
         screenRegisterStudents = tk.Toplevel(self.master)
         screenRegisterStudents.title("UniGrade - Registrar Alunos")
@@ -294,8 +282,8 @@ class StudentManagementApp:
         button_submit.pack(pady=5)
     
     def studentGradeForm(self):
-        def createStudentGrade(studentId, subjectId, grade):
-            self.cursor.execute("INSERT INTO studentGrades (studentId, subjectId, grade) VALUES (%s, %s, %s)", (studentId, subjectId, grade))
+        def createStudentGrade(studentId, subjectId, grade, avaliationId):
+            self.cursor.execute("INSERT INTO studentGrades (studentId, subjectId, grade, avaliationId) VALUES (%s, %s, %s, %s)", (studentId, subjectId, grade, avaliationId))
             self.connection.commit()
 
             messagebox.showinfo("Sucesso", "Nota cadastrada com sucesso!")
@@ -327,6 +315,22 @@ class StudentManagementApp:
         comboboxSelectSubject = ttk.Combobox(screenStudentGradeForm, values=formattedSubjects, width=width)
         comboboxSelectSubject.pack()
         
+        # Avaliation
+        avaliations = self._get_avaliations()
+
+        avaliationLabel = tk.Label(screenStudentGradeForm, text="Avaliação:", width=width)
+        avaliationLabel.pack()
+        
+        formattedAvaliations = []
+        
+        for avaliation in avaliations:
+            subject = self._find_subject(avaliation.subjectId)
+            
+            formattedAvaliations.append(f"{avaliation.id} | {avaliation.name} | Matéria: {subject.name}")
+            
+        comboboxSelectAvaliation = ttk.Combobox(screenStudentGradeForm, values=formattedAvaliations, width=width)
+        comboboxSelectAvaliation.pack()
+        
         # Grade
         labelGrade = tk.Label(screenStudentGradeForm, text="Nota:", width=width)
         labelGrade.pack()
@@ -339,10 +343,89 @@ class StudentManagementApp:
                                   width=50,
                                   command=lambda: createStudentGrade(comboboxSelectStudent.get().split("|")[0].strip(), 
                                                                      comboboxSelectSubject.get().split("|")[0].strip(), 
-                                                                     gradeEntry.get()))
+                                                                     gradeEntry.get(),
+                                                                     comboboxSelectAvaliation.get().split("|")[0].strip()))
         
         button_submit.pack(pady=5)
     
+    def registerGrade(self):
+        screenRegisterGrade = tk.Toplevel(self.master)
+        screenRegisterGrade.title("UniGrade - Registrar Nota")
+
+        self.mainTitle = tk.Label(self.frame, text="Bem-vindo ao UniGrade! Selecione uma opção abaixo:")
+        
+        # Button Save
+        screenRegisterGrade.btnSave = tk.Button(screenRegisterGrade, text="Salvar", command=self.manageSubjects, width=50, height=2)
+        screenRegisterGrade.btnSave.pack()
+        
+        self.master.title("UniGrade - Cadastrar Nota")
+    
+    def viewGrades(self):
+        def listGrades():
+            if (comboboxSelectSubject.get() != "" and comboboxSelectSubject.get() == ""):
+                studentGradesFormattedList = []
+                studentGradesFormattedList = self._get_student_grades_by_subjectId(comboboxSelectSubject.get().split("|")[0].strip())
+            # subjectId = comboboxSelectSubject.get().split("|")[0].strip()
+            # studentId = comboboxSelectStudent.get().split("|")[0].strip()
+            
+        def formatStudentGrades():
+            studentGradesFormatted = []
+            
+            for studentGrade in studentGrades:
+                student = self._find_student(studentGrade.studentId)
+                subject = self._find_subject(studentGrade.subjectId)
+                avaliation = self._find_avaliation(studentGrade.avaliationId)
+                
+                studentGradesFormatted.append(f"{student.id} | {student.name} | Avaliação: {avaliation.name} | Disciplina: {subject.name} | Nota: {studentGrade.grade}")
+        
+            return studentGradesFormatted
+        
+        screenRegisterGrade = tk.Toplevel(self.master)
+        screenRegisterGrade.title("UniGrade - Registrar Nota")
+        
+        studentGrades = self._get_students_grades()
+        studentGradesFormattedList = formatStudentGrades()
+        
+        self._createTitle(screenRegisterGrade, "Consultar Notas", "", lambda: print(""))
+        self._divider(screenRegisterGrade)
+        
+        # Subject
+        titleFrame = tk.Frame(screenRegisterGrade)
+        titleFrame.pack(fill=tk.X, pady=10, padx=10)
+        
+        subjects = self._get_subjects()
+        formattedSubjects = [f"{subject.id} | {subject.name}" for subject in subjects]
+        
+        subjectLabel = tk.Label(titleFrame, text="Matéria:", width=20, anchor='w')
+        subjectLabel.grid(row=0, column=0, sticky='w')
+
+        comboboxSelectSubject = ttk.Combobox(titleFrame, values=formattedSubjects, width=30)
+        comboboxSelectSubject.grid(row=1, column=0)
+
+        students = self._get_students()
+        formattedStudents = [f"{student.id} | {student.name}" for student in students]
+        
+        studentLabel = tk.Label(titleFrame, text="Aluno:", width=30, anchor="w")
+        studentLabel.grid(row=0, column=1, sticky="w")
+
+        comboboxSelectStudent = ttk.Combobox(titleFrame, values=formattedStudents, width=30)
+        comboboxSelectStudent.grid(row=1, column=1)
+        
+        # Submit
+        button_submit = tk.Button(titleFrame, 
+                                  text="Pesquisar", 
+                                  width=10,
+                                  command=listGrades)
+        
+        button_submit.grid(row=1, column=2, padx=5)
+        
+        self._createListBox(screenRegisterGrade, 
+                            studentGradesFormattedList, 
+                            lambda: print(""), 
+                            lambda: print(""), 
+                            useRemoveButton=False, 
+                            width=80)
+
     #region Private Methods
     def _createTitle(self, topLevelReference, title, textButton, callBack):
          # Título
@@ -356,7 +439,7 @@ class StudentManagementApp:
             addButton = tk.Button(titleFrame, text=textButton, command=callBack)
             addButton.pack(side=tk.RIGHT, padx=10)
         
-    def _createListBox(self, topLevelReference, data, removeCallBack, editCallBack, useRemoveButton=True):
+    def _createListBox(self, topLevelReference, data, removeCallBack, editCallBack, useRemoveButton=True, width=50):
         
         def removeSelected():
             selectedIndex = listbox.curselection()
@@ -375,7 +458,7 @@ class StudentManagementApp:
                 
         
                 
-        listbox = tk.Listbox(topLevelReference, width=50)
+        listbox = tk.Listbox(topLevelReference, width=width)
         listbox.pack()
 
         for item in data:
@@ -438,6 +521,7 @@ class StudentManagementApp:
             id SERIAL PRIMARY KEY,
             studentId INTEGER,
             subjectId INTEGER,
+            avaliationId INTEGER,
             grade INTEGER
         )
         ''')
@@ -461,11 +545,22 @@ class StudentManagementApp:
         
         return [Avaliation(row[0], row[1], row[2]) for row in rows]
     
+    
     def _get_students_grades(self):
         self.cursor.execute("SELECT * FROM StudentGrades")
         rows = self.cursor.fetchall()
         
-        return [StudentGrade(row[0], row[1], row[2], row[3]) for row in rows]
+        return [StudentGrade(row[0], row[1], row[2], row[3], row[4]) for row in rows]
+    
+    def _get_student_grades_by_subjectId(self, subjectId):
+        self.cursor.execute("SELECT * FROM StudentGrades WHERE subjectId = %s", subjectId,)
+        rows = self.cursor.fetchall()
+        return [StudentGrade(row[0], row[1], row[2], row[3], row[4]) for row in rows]
+    
+    def _get_student_grades_by_subject_and_studentId(self, subjectId, studentId):
+        self.cursor.execute("SELECT * FROM StudentGrades WHERE subjectId = %s AND studentId = %s", subjectId, studentId)
+        rows = self.cursor.fetchall()
+        return [StudentGrade(row[0], row[1], row[2], row[3], row[4]) for row in rows]
     
     def _find_subject(self, subjectId):
         subjectFinded = None
@@ -478,6 +573,18 @@ class StudentManagementApp:
                 break
             
         return subjectFinded
+    
+    def _find_student(self, studentId):
+        studentFinded = None
+        
+        students = self._get_students()
+        
+        for student in students:   
+            if student.id == studentId:       
+                studentFinded = student
+                break
+            
+        return studentFinded
     
     def _find_avaliation(self, avaliationId):
         avaliationFinded = None

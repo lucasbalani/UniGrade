@@ -1,8 +1,9 @@
 class StudentGrade:
-    def __init__(self, id, studentId, subjectId, grade):
+    def __init__(self, id, studentId, subjectId, avaliationId, grade):
         self.id = id
         self.studentId = studentId
         self.subjectId = subjectId
+        self.avaliationId = avaliationId
         self.grade = grade
 
     def __str__(self):
